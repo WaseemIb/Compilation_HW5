@@ -115,6 +115,8 @@ Exp::Exp(Node *node, const string& op) : Node()
         }
     } else if(op == "TRUE" || op == "FALSE") {
         m_type = "BOOL";
+        m_trueLabel = buffer.freshLabel();
+        m_falseLabel = buffer.freshLabel();
     } else if(op == "STRING") {
         m_type = "STRING";
     } else if(op == "SAME") {
@@ -148,7 +150,7 @@ Exp::Exp(Call *call) : Node()
     m_type = call->m_type;
 }
 
-Node::Node(const string& type) : m_text(string(yytext)), m_type(type), m_var() {}
+Node::Node(const string& type) : m_text(string(yytext)), m_type(type), m_var(), m_trueLabel(), m_falseLabel() {}
 
 bool Node::checkNumber() const
 {

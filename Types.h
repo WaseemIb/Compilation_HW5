@@ -23,6 +23,8 @@ public:
     string m_type;
     string m_text;
     string m_var;
+    string m_trueLabel;
+    string m_falseLabel;
 //Node Methods
     explicit Node(const string& type = "");
     bool checkNumber() const;
