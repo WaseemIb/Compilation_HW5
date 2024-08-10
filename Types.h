@@ -22,8 +22,9 @@ class Node {
 public:
     string m_type;
     string m_text;
+    string m_var;
 //Node Methods
-    Node(const string& type = "");
+    explicit Node(const string& type = "");
     bool checkNumber() const;
     bool checkInt() const;
     bool checkBool() const;
@@ -43,9 +44,9 @@ public:
 class Statement : public Node {
 public:
     Statement() = default;
-    Statement(Node* node);
-    Statement(Call* call);
-    Statement(Statements* statements);
+    explicit Statement(Node* node);
+    explicit Statement(Call* call);
+    explicit Statement(Statements* statements);
     Statement(Type* type, Node* node, Exp * exp = nullptr);
     Statement(Node* node, Exp* exp);
     Statement(Exp* exp, Statement* statement1, Statement* statement2 = nullptr);
@@ -53,22 +54,19 @@ public:
 
 class Call : public Node {
 public:
-    Call(Exp* exp);
     Call(Node* node, Exp* exp);
 };
 
 class Type : public Node {
 public:
-    Type(const string& type);
+    explicit Type(const string& type);
 };
 
 class Exp : public Node {
 public:
-    Exp(Node* node);
-    Exp(Exp* exp);
-    Exp(Call* call);
+    explicit Exp(Node* node);
+    explicit Exp(Call* call);
     Exp(Node* node, const string& op);
-    Exp(Exp* exp, const string& op);
     Exp(Exp* exp1, Node* op, Exp* exp2);
     Exp(Type* type, Exp* exp);
 };

@@ -42,3 +42,9 @@ void CodeBuffer::printGlobalBuffer()
 		cout << *it << endl;
 	}
 }
+
+std::string CodeBuffer::freshVar() {
+    std::stringstream var;
+    var << "%var" << ++vars_num;
+    return var.str();
+}

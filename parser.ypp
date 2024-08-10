@@ -46,12 +46,20 @@ Type : INT {  $$ = new Type("INT") ;}
 Type : BYTE { $$ = new Type("BYTE") ;}
 Type : BOOL { $$ = new Type("BOOL") ;}
 Exp : LPAREN Exp RPAREN { $$ = new Exp($2, "SAME") ;}
+
+//GOOD
 Exp : Exp PLUSMINUS Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp MULTDIV Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
+
+
 Exp : ID {  $$ = new Exp($1) ;}
 Exp : Call { $$ = new Exp(nodeTo<Call>($1)) ;}
+
+//GOOD
 Exp : NUM { $$ = new Exp($1, "INT") ;}
 Exp : NUM B { $$ = new Exp($1, "BYTE") ;}
+
+
 Exp : STRING { $$ = new Exp($1, "STRING") ;}
 Exp : TRUE { $$ = new Exp($1, "TRUE") ;}
 Exp : FALSE { $$ = new Exp($1, "FALSE") ;}
@@ -60,6 +68,8 @@ Exp : Exp AND Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp OR Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp RELOP Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp EQUAL_N Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
+
+//GOOD
 Exp : LPAREN Type RPAREN Exp { $$ = new Exp(nodeTo<Type>($2), nodeTo<Exp>($4)) ;}
 
 M1 : { ScopesTable::getInstance()->addScope() ;}

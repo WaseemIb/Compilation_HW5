@@ -13,6 +13,7 @@ class CodeBuffer{
 	std::vector<std::string> buffer;
 	std::vector<std::string> globalDefs;
 	int labels_num = 1;
+    int vars_num = 1;
 public:
 	static CodeBuffer &instance();
 
@@ -32,6 +33,8 @@ public:
 	void emitGlobal(const string& dataLine);
 	//print the content of the global buffer to stdout
 	void printGlobalBuffer();
+
+    std::string freshVar();
 
 };
 

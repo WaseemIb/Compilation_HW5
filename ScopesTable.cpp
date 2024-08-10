@@ -12,19 +12,19 @@ ScopesTable* ScopesTable::instance = nullptr;
 ScopeTableEntry::ScopeTableEntry(const string &name, const string &type, int offset)
                 : name(name), type(type), offset(offset) {}
 
-void ScopeTableEntry::printEntry() const
-{
-    printID(name, offset, type);
-}
+//void ScopeTableEntry::printEntry() const
+//{
+//    printID(name, offset, type);
+//}
 
 ScopeTableFunctionEntry::ScopeTableFunctionEntry(const string& name, const string& type, int offset,
                                                  const std::string &paramType) : ScopeTableEntry(name, type, offset),
                                                  paramType(paramType) {}
 
-void ScopeTableFunctionEntry::printEntry() const
-{
-    printID(name, 0, makeFunctionType(paramType, type));
-}
+//void ScopeTableFunctionEntry::printEntry() const
+//{
+//    printID(name, 0, makeFunctionType(paramType, type));
+//}
 
 ScopesTable *ScopesTable::getInstance()
 {
@@ -53,7 +53,7 @@ void ScopesTable::addScope(bool isWhile)
 void ScopesTable::removeScope()
 {
     SingleScopeTable *table = scopesTable[scopesTable.size() - 1];
-    table->printSymbols();
+//    table->printSymbols();
     scopesTable.pop_back();
     offsetsTable.pop_back();
 }
@@ -137,14 +137,14 @@ void SingleScopeTable::addFuncEntry(const std::string &name, const std::string &
     table.push_back(funcEntry);
 }
 
-void SingleScopeTable::printSymbols() const
-{
-    endScope();
-    for(ScopeTableEntry* entry : table)
-    {
-        entry->printEntry();
-    }
-}
+//void SingleScopeTable::printSymbols() const
+//{
+//    endScope();
+//    for(ScopeTableEntry* entry : table)
+//    {
+//        entry->printEntry();
+//    }
+//}
 
 ScopeTableFunctionEntry *ScopesTable::getFunction(const std::string &name) const
 {

@@ -4,11 +4,28 @@
 
 #include "Types.h"
 #include <iostream>
+#include "cg.hpp"
 
 extern int yylineno;
 extern char* yytext;
 
 const int MAX_BYTE_VALUE = 255;
+CodeBuffer &buffer = CodeBuffer::instance();
+
+void emitCheckZero(const string& var)
+{
+    string isZero = buffer.freshVar();
+    buffer.emit(isZero + " = icmp eq i32 " + var + ", 0");
+    string trueLabel = buffer.freshLabel();
+    string nextLabel = buffer.freshLabel();
+    buffer.emit("br i1 " + isZero + ", label " + trueLabel + ", label " + nextLabel);
+    buffer.emit(trueLabel + ":");
+    buffer.emitGlobal(R"(@error_msg = private unnamed_addr constant [24 x i8] c"Error division by zero\00", align 1)");
+    buffer.emit("%msg_ptr = getelementptr [24 x i8], [24 x i8]* @error_msg, i32 0, i32 0");
+    buffer.emit("call void @print(i8* %msg_ptr)");
+    buffer.emit("call void @exit(i32 1)");
+    buffer.emit(nextLabel + ":");
+}
 
 Exp::Exp(Exp *exp1, Node *op, Exp *exp2) : Node()
 {
@@ -25,6 +42,27 @@ Exp::Exp(Exp *exp1, Node *op, Exp *exp2) : Node()
             exit(1);
         }
         m_type = oneIsInt ? "INT" : "BYTE";
+        m_var = buffer.freshVar();
+        if(operation == "+")
+            buffer.emit(m_var + " = add i32 " + exp1->m_var + ", " + exp2->m_var);
+        else if (operation == "-")
+            buffer.emit(m_var + " = sub i32 " + exp1->m_var + ", " + exp2->m_var);
+        else if (operation == "*")
+            buffer.emit(m_var + " = mul i32 " + exp1->m_var + ", " + exp2->m_var);
+        else if (operation == "/")
+        {
+            emitCheckZero(exp2->m_var);
+            if(oneIsInt)
+                buffer.emit(m_var + " = sdiv i32 " + exp1->m_var + ", " + exp2->m_var);
+            else
+                buffer.emit(m_var + " = udiv i32 " + exp1->m_var + ", " + exp2->m_var);
+        }
+        if(!oneIsInt)
+        {
+            string tmpVar = m_var;
+            m_var = buffer.freshVar();
+            buffer.emit(m_var + " = trunc i32 " + tmpVar + " to i8");
+        }
     } else if(operation == "and" || operation == "or") {
         if(!areBools)
         {
@@ -59,22 +97,14 @@ Exp::Exp(Node *node, const string& op) : Node()
     m_text = "";
     if(op == "INT") {
         m_type = "INT";
+        m_var = buffer.freshVar();
+        buffer.emit(m_var + " = add i32 0, " + node->m_text);
     } else if(op == "BYTE") {
         m_type = "BYTE";
-        int value;
-        bool outOfByteRange = false;
-        try {
-            value = stoi(node->m_text);
-            if (value > MAX_BYTE_VALUE)
-                outOfByteRange = true;
-        } catch (std::out_of_range& e) {
-            outOfByteRange = true;
-        }
-        if(outOfByteRange)
-        {
-            errorByteTooLarge(yylineno, node->m_text);
-            exit(1);
-        }
+        string tmpVar = buffer.freshVar();
+        buffer.emit(tmpVar + " = add i32 0, " + node->m_text);
+        m_var = buffer.freshVar();
+        buffer.emit(m_var + " = trunc i32 " + tmpVar + " to i8");
     } else if(op == "NOT") {
         m_type = "BOOL";
         bool isBool = node->checkBool();
@@ -102,6 +132,14 @@ Exp::Exp(Type *type, Exp *exp) : Node()
     }
 
     m_type = type->m_type;
+    m_var = buffer.freshVar();
+    buffer.emit(m_var + " = add i32 0, " + exp->m_var);
+    if(m_type == "BYTE")
+    {
+        string tmpVar = m_var;
+        m_var = buffer.freshVar();
+        buffer.emit(m_var + " = trunc i32 " + tmpVar + " to i8");
+    }
 }
 
 Exp::Exp(Call *call) : Node()
@@ -110,7 +148,7 @@ Exp::Exp(Call *call) : Node()
     m_type = call->m_type;
 }
 
-Node::Node(const string& type) : m_text(string(yytext)), m_type(type) {}
+Node::Node(const string& type) : m_text(string(yytext)), m_type(type), m_var() {}
 
 bool Node::checkNumber() const
 {

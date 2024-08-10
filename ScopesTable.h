@@ -18,14 +18,15 @@ public:
     string type;
     int offset;
     ScopeTableEntry(const string& name, const string& type, int offset);
-    virtual void printEntry() const;
+    //virtual void printEntry() const;
+    virtual ~ScopeTableEntry() = default;
 };
 
 class ScopeTableFunctionEntry : public ScopeTableEntry {
 public:
     string paramType;
     ScopeTableFunctionEntry(const string& name, const string& type, int offset, const string& paramType);
-    void printEntry() const override;
+    //void printEntry() const override;
 };
 
 
@@ -63,7 +64,7 @@ public:
     ScopeTableEntry* getSymbol(const string& symbol) const;
     bool isWhileScope() const;
     void addFuncEntry(const string& name, const string& type, int offset, const string& paramType);
-    void printSymbols() const;
+//    void printSymbols() const;
 };
 
 #endif //COMPILATION_HW3_SCOPESTABLE_H
