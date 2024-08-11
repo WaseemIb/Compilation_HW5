@@ -45,7 +45,7 @@ public:
 
 class Statement : public Node {
 public:
-    Statement() = default;
+    Statement();
     explicit Statement(Node* node);
     explicit Statement(Call* call);
     explicit Statement(Statements* statements);
@@ -57,6 +57,7 @@ public:
 class Call : public Node {
 public:
     Call(Node* node, Exp* exp);
+    void callFunction(Node *node, Exp *exp, ScopeTableFunctionEntry* entry);
 };
 
 class Type : public Node {
@@ -71,6 +72,9 @@ public:
     Exp(Node* node, const string& op);
     Exp(Exp* exp1, Node* op, Exp* exp2);
     Exp(Type* type, Exp* exp);
+    void processArithmetic(Exp *exp1, Node *op, Exp *exp2);
+    void processAndOr(Exp *exp1, Node *op, Exp *exp2);
+    void processRelop(Exp *exp1, Node *op, Exp *exp2);
 };
 
 template <typename T>

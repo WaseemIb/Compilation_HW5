@@ -14,6 +14,7 @@ class CodeBuffer{
 	std::vector<std::string> globalDefs;
 	int labels_num = 1;
     int vars_num = 1;
+    int str_num = 1;
 public:
 	static CodeBuffer &instance();
 
@@ -36,6 +37,7 @@ public:
 
     std::string freshVar();
 
+    std::string freshStr();
 };
 
 #endif

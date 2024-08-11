@@ -48,3 +48,9 @@ std::string CodeBuffer::freshVar() {
     var << "%var" << ++vars_num;
     return var.str();
 }
+
+std::string CodeBuffer::freshStr() {
+    std::stringstream str;
+    str << "@.str" << ++str_num;
+    return str.str();
+}

@@ -1,6 +1,7 @@
 %{
 #include "Types.h"
 #include <iostream>
+#include "cg.hpp"
 
 extern int yylineno;
 extern int yylex();
@@ -27,7 +28,8 @@ void yyerror(const char*);
 
 %%
 
-Program : Statements { $$ = new Program() ;}
+//GOOD
+Program : I Statements { $$ = new Program() ;}
 Statements : Statement { $$ = new Statements() ;}
 Statements : Statements Statement { $$ = new Statements() ;}
 Statement : LBRACE M1 Statements M2 RBRACE { $$ = new Statement(nodeTo<Statements>($3)) ;}
@@ -36,45 +38,44 @@ Statement : Type ID ASSIGN Exp SC { $$ = new Statement(nodeTo<Type>($1), $2, nod
 Statement : ID ASSIGN Exp SC { $$ = new Statement($1, nodeTo<Exp>($3)) ;}
 Statement : Call SC { $$ = new Statement(nodeTo<Call>($1)) ;}
 Statement : RETURN SC {  $$ = new Statement() ;}
+
+
 Statement : IF LPAREN Condition RPAREN M1 Statement M2 { $$ = new Statement(nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
 Statement : IF LPAREN Condition RPAREN M1 Statement M2 ELSE M1 Statement M2 { $$ = new Statement(nodeTo<Exp>($3), nodeTo<Statement>($6), nodeTo<Statement>($10)) ;}
 Statement : WHILE LPAREN Condition RPAREN M3 Statement M2 { $$ = new Statement(nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
 Statement : BREAK SC { $$ = new Statement($1) ;}
 Statement : CONTINUE SC { $$ = new Statement($1) ;}
+
+//GOOD
 Call : ID LPAREN Exp RPAREN { $$ = new Call($1, nodeTo<Exp>($3)) ;}
 Type : INT {  $$ = new Type("INT") ;}
 Type : BYTE { $$ = new Type("BYTE") ;}
 Type : BOOL { $$ = new Type("BOOL") ;}
 Exp : LPAREN Exp RPAREN { $$ = new Exp($2, "SAME") ;}
-
-//GOOD
 Exp : Exp PLUSMINUS Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp MULTDIV Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
-
-
 Exp : ID {  $$ = new Exp($1) ;}
 Exp : Call { $$ = new Exp(nodeTo<Call>($1)) ;}
-
-//GOOD
 Exp : NUM { $$ = new Exp($1, "INT") ;}
 Exp : NUM B { $$ = new Exp($1, "BYTE") ;}
-
-
 Exp : STRING { $$ = new Exp($1, "STRING") ;}
 Exp : TRUE { $$ = new Exp($1, "TRUE") ;}
 Exp : FALSE { $$ = new Exp($1, "FALSE") ;}
 Exp : NOT Exp { $$ = new Exp($2, "NOT") ;}
-Exp : Exp AND Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
-Exp : Exp OR Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
+Exp : Exp Q2 AND Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
+Exp : Exp Q1 OR Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp RELOP Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp EQUAL_N Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
-
-//GOOD
 Exp : LPAREN Type RPAREN Exp { $$ = new Exp(nodeTo<Type>($2), nodeTo<Exp>($4)) ;}
 
 M1 : { ScopesTable::getInstance()->addScope() ;}
 M2 : { ScopesTable::getInstance()->removeScope() ;}
 M3 : { ScopesTable::getInstance()->addScope(true) ;}
+Q1 : { YYSTYPE e = stack.peek(0);
+       CodeBuffer::instance().emit(e.m_falseLabel + ":") ;}
+Q2 : { YYSTYPE e = stack.peek(0);
+       CodeBuffer::instance().emit(e.m_trueLabel + ":") ;}
+I : { initProgram() ;}
 
 Condition : Exp {CheckConditionIsBool($1);}
 %%
