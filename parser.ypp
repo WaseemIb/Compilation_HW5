@@ -31,17 +31,17 @@ void yyerror(const char*);
 Program : Statements { $$ = new Program() ;}
 Statements : Statement { $$ = new Statements() ;}
 Statements : Statements Statement { $$ = new Statements() ;}
-Statement : LBRACE M1 Statements M2 RBRACE { $$ = new Statement(nodeTo<Statements>($3)) ;}
+Statement : LBRACE M8 Statements M9 RBRACE { $$ = new Statement(nodeTo<Statements>($3)) ;}
 Statement : Type ID SC { $$ = new Statement(nodeTo<Type>($1), $2) ;}
 Statement : Type ID ASSIGN Exp SC { $$ = new Statement(nodeTo<Type>($1), $2, nodeTo<Exp>($4)) ;}
 Statement : ID ASSIGN Exp SC { $$ = new Statement($1, nodeTo<Exp>($3)) ;}
 Statement : Call SC { $$ = new Statement(nodeTo<Call>($1)) ;}
 Statement : RETURN SC {  $$ = new Statement() ;}
 Statement : IF LPAREN Condition RPAREN M1 Statement { ScopesTable::getInstance()->removeScope() ;
-                                                         CodeBuffer::instance().emit("br label %" + ($-3)->m_nextLabel);
-                                                         CodeBuffer::instance().emit(($-3)->m_falseLabel + ":") ;
-                                                         CodeBuffer::instance().emit("br label %" + ($-3)->m_nextLabel);
-                                                         CodeBuffer::instance().emit(($-3)->m_nextLabel + ":") ;
+                                                         CodeBuffer::instance().emit("br label %" + ($3)->m_nextLabel);
+                                                         CodeBuffer::instance().emit(($3)->m_falseLabel + ":") ;
+                                                         CodeBuffer::instance().emit("br label %" + ($3)->m_nextLabel);
+                                                         CodeBuffer::instance().emit(($3)->m_nextLabel + ":") ;
                                                          $$ = new Statement(nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
 Statement : IF LPAREN Condition RPAREN M1 Statement ELSE M4 Statement M5 { $$ = new Statement(nodeTo<Exp>($3), nodeTo<Statement>($6), nodeTo<Statement>($9)) ;}
 Statement : WHILE M3 LPAREN Condition RPAREN M6 Statement M7 { $$ = new Statement(nodeTo<Exp>($4),nodeTo<Statement>($7)) ;}
@@ -71,12 +71,6 @@ Exp : LPAREN Type RPAREN Exp { $$ = new Exp(nodeTo<Type>($2), nodeTo<Exp>($4)) ;
 M1 : { ScopesTable::getInstance()->addScope() ;
        CodeBuffer::instance().emit(($-1)->m_trueLabel + ":") ;}
 
-M2 : { ScopesTable::getInstance()->removeScope() ;
-       CodeBuffer::instance().emit("br label %" + ($-3)->m_nextLabel);
-       CodeBuffer::instance().emit(($-3)->m_falseLabel + ":") ;
-       CodeBuffer::instance().emit("br label %" + ($-3)->m_nextLabel);
-       CodeBuffer::instance().emit(($-3)->m_nextLabel + ":") ;}
-
 M3 : { ScopesTable::getInstance()->addScope(true) ;}
 
 M4 : { CodeBuffer::instance().emit("br label %" + ($-4)->m_nextLabel);
@@ -96,6 +90,10 @@ M7 : { CodeBuffer::instance().emit("br label %" + ScopesTable::getInstance()->ge
        CodeBuffer::instance().emit("br label %" + ($-3)->m_nextLabel) ;
        CodeBuffer::instance().emit(($-3)->m_nextLabel + ":") ;
        ScopesTable::getInstance()->removeScope() ;}
+
+M8 : { ScopesTable::getInstance()->addScope() ;}
+
+M9 : { ScopesTable::getInstance()->removeScope() ;}
 
 Q1 : { CodeBuffer::instance().emit(($-0)->m_falseLabel + ":") ;}
 Q2 : { CodeBuffer::instance().emit(($-0)->m_trueLabel + ":") ;}

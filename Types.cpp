@@ -417,8 +417,8 @@ Call::Call(Node *node, Exp *exp) : Node()
 Program::Program() : Node()
 {
     //ScopesTable::getInstance()->removeScope();
-    buffer.emitGlobal("    ret i32 0");
-    buffer.emitGlobal("}");
+    buffer.emit("    ret i32 0");
+    buffer.emit("}");
 }
 
 void CheckConditionIsBool(Node* node)
@@ -461,5 +461,5 @@ void initProgram()
     buffer.emitGlobal("    ret void");
     buffer.emitGlobal("}");
 
-    buffer.emitGlobal("define i32 @main(){");
+    buffer.emit("define i32 @main(){");
 }
