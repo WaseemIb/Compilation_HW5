@@ -25,6 +25,7 @@ public:
     string m_var;
     string m_trueLabel;
     string m_falseLabel;
+    string m_nextLabel;
 //Node Methods
     explicit Node(const string& type = "");
     bool checkNumber() const;
@@ -51,7 +52,7 @@ public:
     explicit Statement(Statements* statements);
     Statement(Type* type, Node* node, Exp * exp = nullptr);
     Statement(Node* node, Exp* exp);
-    Statement(Exp* exp, Statement* statement1, Statement* statement2 = nullptr);
+    Statement(bool isWhile, Exp* exp, Statement* statement1, Statement* statement2 = nullptr);
 };
 
 class Call : public Node {

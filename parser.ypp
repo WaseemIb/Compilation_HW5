@@ -40,9 +40,9 @@ Statement : Call SC { $$ = new Statement(nodeTo<Call>($1)) ;}
 Statement : RETURN SC {  $$ = new Statement() ;}
 
 
-Statement : IF LPAREN Condition RPAREN M1 Statement M2 { $$ = new Statement(nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
-Statement : IF LPAREN Condition RPAREN M1 Statement M2 ELSE M1 Statement M2 { $$ = new Statement(nodeTo<Exp>($3), nodeTo<Statement>($6), nodeTo<Statement>($10)) ;}
-Statement : WHILE LPAREN Condition RPAREN M3 Statement M2 { $$ = new Statement(nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
+Statement : IF LPAREN Condition RPAREN M1 Statement M2 { $$ = new Statement(false, nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
+Statement : IF LPAREN Condition RPAREN M1 Statement M2 ELSE M4 Statement M2 { $$ = new Statement(false, nodeTo<Exp>($3), nodeTo<Statement>($6), nodeTo<Statement>($10)) ;}
+Statement : WHILE LPAREN Condition RPAREN M3 Statement M2 { $$ = new Statement(true, nodeTo<Exp>($3),nodeTo<Statement>($6)) ;}
 Statement : BREAK SC { $$ = new Statement($1) ;}
 Statement : CONTINUE SC { $$ = new Statement($1) ;}
 
@@ -62,19 +62,28 @@ Exp : STRING { $$ = new Exp($1, "STRING") ;}
 Exp : TRUE { $$ = new Exp($1, "TRUE") ;}
 Exp : FALSE { $$ = new Exp($1, "FALSE") ;}
 Exp : NOT Exp { $$ = new Exp($2, "NOT") ;}
-Exp : Exp Q2 AND Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
-Exp : Exp Q1 OR Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
+Exp : Exp AND Q2 Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
+Exp : Exp OR Q1 Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp RELOP Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : Exp EQUAL_N Exp { $$ = new Exp( nodeTo<Exp>($1), $2, nodeTo<Exp>($3)) ;}
 Exp : LPAREN Type RPAREN Exp { $$ = new Exp(nodeTo<Type>($2), nodeTo<Exp>($4)) ;}
 
-M1 : { ScopesTable::getInstance()->addScope() ;}
-M2 : { ScopesTable::getInstance()->removeScope() ;}
+M1 : { ScopesTable::getInstance()->addScope() ;
+       CodeBuffer::instance().emit(($-1).m_trueLabel + ":" ;}
+
+M2 : { ScopesTable::getInstance()->removeScope() ;
+       ($-3).m_nextLabel = CodeBuffer::instance().freshLabel();
+       CodeBuffer::instance().emit("br label %" + ($-3).m_nextLabel;
+       CodeBuffer::instance().emit(($-3)->m_falseLabel + ":" ;}
+
 M3 : { ScopesTable::getInstance()->addScope(true) ;}
-Q1 : { YYSTYPE e = stack.peek(0);
-       CodeBuffer::instance().emit(e.m_falseLabel + ":") ;}
-Q2 : { YYSTYPE e = stack.peek(0);
-       CodeBuffer::instance().emit(e.m_trueLabel + ":") ;}
+
+M4 : { ScopesTable::getInstance()->addScope() ;
+       CodeBuffer::instance().emit(($-5).m_falseLabel + ":" ;}
+
+Q1 : { CodeBuffer::instance().emit(($-0).m_falseLabel + ":") ;}
+Q2 : { CodeBuffer::instance().emit(($-0).m_trueLabel + ":") ;}
+
 I : { initProgram() ;}
 
 Condition : Exp {CheckConditionIsBool($1);}

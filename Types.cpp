@@ -229,7 +229,8 @@ Exp::Exp(Call *call) : Node()
     m_falseLabel = call->m_falseLabel;
 }
 
-Node::Node(const string& type) : m_text(string(yytext)), m_type(type), m_var(), m_trueLabel(), m_falseLabel() {}
+Node::Node(const string& type) : m_text(string(yytext)), m_type(type), m_var(), m_trueLabel(),
+                                 m_falseLabel(), m_nextLabel() {}
 
 bool Node::checkNumber() const
 {
@@ -335,7 +336,7 @@ Statement::Statement(Call *call) : Node()
     m_type = call->m_type;
 }
 
-Statement::Statement(Exp *exp, Statement *statement1, Statement *statement2) : Node()
+Statement::Statement(bool isWhile, Exp *exp, Statement *statement1, Statement *statement2) : Node()
 {
     m_text = "";
     m_type = "";
@@ -343,6 +344,16 @@ Statement::Statement(Exp *exp, Statement *statement1, Statement *statement2) : N
     {
         errorMismatch(yylineno);
         exit(1);
+    }
+
+    if(isWhile)
+    {
+
+    }
+    else
+    {
+        buffer.emit("br label %" + exp->m_nextLabel);
+        buffer.emit(exp->m_nextLabel + ":");
     }
 }
 
