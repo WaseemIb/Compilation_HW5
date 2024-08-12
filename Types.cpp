@@ -145,7 +145,7 @@ Exp::Exp(Node* node) : Node()
     m_type = entry->type;
     m_var = buffer.freshVar();
     string tmpVar = buffer.freshVar();
-    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit(tmpVar + " = getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     buffer.emit(m_var + " = load i32, i32* " + tmpVar);
 
     if(m_type == "BOOL")
@@ -275,12 +275,12 @@ void assignBool(Exp* exp, ScopeTableEntry* entry)
 {
     string tmpVar = buffer.freshVar();
     buffer.emit(exp->m_trueLabel + ":");
-    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit(tmpVar + " = getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     buffer.emit("store i32 1, i32* " + tmpVar);
     buffer.emit("br label %" + exp->m_nextLabel);
     tmpVar = buffer.freshVar();
     buffer.emit(exp->m_falseLabel + ":");
-    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit(tmpVar + " = getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     buffer.emit("store i32 0, i32* " + tmpVar);
     buffer.emit("br label %" + exp->m_nextLabel);
     buffer.emit(exp->m_nextLabel + ":");
@@ -308,7 +308,7 @@ Statement::Statement(Type *type, Node *node, Exp* exp) : Node()
     }
 
     string tmpVar = buffer.freshVar();
-    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit(tmpVar + " = getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     if(exp != nullptr)
         buffer.emit("store i32 " + exp->m_var + ", i32* " + tmpVar);
     else
@@ -338,7 +338,7 @@ Statement::Statement(Node *node, Exp *exp) : Node()
     }
 
     string tmpVar = buffer.freshVar();
-    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit(tmpVar + " = getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     buffer.emit("store i32 " + exp->m_var + ", i32* " + tmpVar);
 
 }
