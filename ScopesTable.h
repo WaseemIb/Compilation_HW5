@@ -49,6 +49,9 @@ public:
     bool hasWhileScope() const;
     ScopeTableFunctionEntry* getFunction(const string& name) const;
     ScopeTableEntry* getVar(const string& symbol) const;
+    string getLastWhileBeforeLabel() const;
+    string getLastWhileNextLabel();
+    SingleScopeTable* getLastWhileScope();
 };
 
 
@@ -58,6 +61,9 @@ private:
     bool isWhile;
 
 public:
+    string beforeWhileCond;
+    string nextLabel;
+
     SingleScopeTable(bool isWhile = false);
     void addEntry(string name, string type, int offset);
     bool symbolExists(const string& symbol) const;

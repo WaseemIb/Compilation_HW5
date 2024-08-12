@@ -26,7 +26,7 @@ public:
     string m_trueLabel;
     string m_falseLabel;
     string m_nextLabel;
-//Node Methods
+
     explicit Node(const string& type = "");
     bool checkNumber() const;
     bool checkInt() const;
@@ -52,7 +52,7 @@ public:
     explicit Statement(Statements* statements);
     Statement(Type* type, Node* node, Exp * exp = nullptr);
     Statement(Node* node, Exp* exp);
-    Statement(bool isWhile, Exp* exp, Statement* statement1, Statement* statement2 = nullptr);
+    Statement(Exp* exp, Statement* statement1, Statement* statement2 = nullptr);
 };
 
 class Call : public Node {
@@ -85,5 +85,6 @@ T* nodeTo(Node* ptr)
 }
 
 void CheckConditionIsBool(Node* node);
+void initProgram();
 
 #endif //COMPILATION_HW3_TYPES_H

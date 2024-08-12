@@ -18,7 +18,7 @@ void emitCheckZero(const string& var)
     buffer.emit(isZero + " = icmp eq i32 " + var + ", 0");
     string trueLabel = buffer.freshLabel();
     string nextLabel = buffer.freshLabel();
-    buffer.emit("br i1 " + isZero + ", label %" + trueLabel + ", label %" + nextLabel);
+    buffer.emit("br i32 " + isZero + ", label %" + trueLabel + ", label %" + nextLabel);
     buffer.emit(trueLabel + ":");
     string errorVar = buffer.freshStr();
     buffer.emitGlobal(errorVar + R"( = private unnamed_addr constant [24 x i8] c"Error division by zero\00", align 1)");
@@ -75,6 +75,7 @@ void Exp::processAndOr(Exp *exp1, Node *op, Exp *exp2)
     m_type = "BOOL";
     m_trueLabel = exp2->m_trueLabel;
     m_falseLabel = exp2->m_falseLabel;
+    m_nextLabel = exp2->m_nextLabel;
     if(operation == "OR") {
         buffer.emit(exp1->m_trueLabel + ":");
         buffer.emit("br label %" + m_trueLabel);
@@ -96,7 +97,7 @@ void Exp::processRelop(Exp *exp1, Node *op, Exp *exp2)
     m_type = "BOOL";
     m_trueLabel = buffer.freshLabel();
     m_falseLabel = buffer.freshLabel();
-
+    m_nextLabel = buffer.freshLabel();
     string cmpCmd;
     if(operation == "<")
         cmpCmd = "slt";
@@ -113,7 +114,7 @@ void Exp::processRelop(Exp *exp1, Node *op, Exp *exp2)
 
     string tmpVar = buffer.freshVar();
     buffer.emit(tmpVar + " = icmp " + cmpCmd + "i32 " + exp1->m_var + ", " + exp2->m_var);
-    buffer.emit("br i1 " + tmpVar + ", label %" + m_trueLabel + ", label %" + m_falseLabel);
+    buffer.emit("br i32 " + tmpVar + ", label %" + m_trueLabel + ", label %" + m_falseLabel);
 }
 
 
@@ -146,6 +147,17 @@ Exp::Exp(Node* node) : Node()
     string tmpVar = buffer.freshVar();
     buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     buffer.emit(m_var + " = load i32, i32* " + tmpVar);
+
+    if(m_type == "BOOL")
+    {
+        m_trueLabel = buffer.freshLabel();
+        m_falseLabel = buffer.freshLabel();
+        m_nextLabel = buffer.freshLabel();
+        string isOne = buffer.freshVar();
+        buffer.emit(isOne + " = icmp eq i32 " + m_var + ", 1");
+        buffer.emit("br i32 " + isOne + ", label %" + m_trueLabel + ", " + m_falseLabel);
+        m_var = "";
+    }
 }
 
 Exp::Exp(Node *node, const string& op) : Node()
@@ -171,6 +183,7 @@ Exp::Exp(Node *node, const string& op) : Node()
         }
         m_trueLabel = buffer.freshLabel();
         m_falseLabel = buffer.freshLabel();
+        m_nextLabel = buffer.freshLabel();
         buffer.emit(node->m_trueLabel + ":");
         buffer.emit("br label %" + m_falseLabel);
         buffer.emit(node->m_falseLabel + ":");
@@ -180,6 +193,7 @@ Exp::Exp(Node *node, const string& op) : Node()
         m_type = "BOOL";
         m_trueLabel = buffer.freshLabel();
         m_falseLabel = buffer.freshLabel();
+        m_nextLabel = buffer.freshLabel();
         if(op == "TRUE")
             buffer.emit("br label %" + m_trueLabel);
         else if(op == "FALSE")
@@ -257,6 +271,21 @@ Type::Type(const string& type) : Node()
     m_type = type;
 }
 
+void assignBool(Exp* exp, ScopeTableEntry* entry)
+{
+    string tmpVar = buffer.freshVar();
+    buffer.emit(exp->m_trueLabel + ":");
+    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit("store i32 1, i32* " + tmpVar);
+    buffer.emit("br label %" + exp->m_nextLabel);
+    tmpVar = buffer.freshVar();
+    buffer.emit(exp->m_falseLabel + ":");
+    buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
+    buffer.emit("store i32 0, i32* " + tmpVar);
+    buffer.emit("br label %" + exp->m_nextLabel);
+    buffer.emit(exp->m_nextLabel + ":");
+}
+
 Statement::Statement(Type *type, Node *node, Exp* exp) : Node()
 {
     m_text = "";
@@ -271,26 +300,19 @@ Statement::Statement(Type *type, Node *node, Exp* exp) : Node()
     }
     scopesTable->addVarToLastScope(symbol, m_type);
     ScopeTableEntry* entry = scopesTable->getVar(symbol);
+
+    if(m_type == "BOOL" && exp != nullptr)
+    {
+        assignBool(exp, entry);
+        return;
+    }
+
     string tmpVar = buffer.freshVar();
     buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     if(exp != nullptr)
-    {
         buffer.emit("store i32 " + exp->m_var + ", i32* " + tmpVar);
-        node->m_trueLabel = exp->m_trueLabel;
-        node->m_falseLabel = exp->m_falseLabel;
-        node->m_var = exp->m_var;
-    }
     else
-    {
         buffer.emit("store i32 0, i32* " + tmpVar);
-        if(type->m_type == "BOOL")
-        {
-            node->m_trueLabel = buffer.freshLabel();
-            node->m_falseLabel = buffer.freshLabel();
-            node->m_var = buffer.freshVar();
-            buffer.emit(m_var + " = add i32 0, 0");
-        }
-    }
 }
 
 Statement::Statement() : Node()
@@ -308,6 +330,13 @@ Statement::Statement(Node *node, Exp *exp) : Node()
     if(type != exp->m_type && (type != "INT" || exp->m_type != "BYTE")) {
         errorMismatch(yylineno); exit(1);
     }
+
+    if(m_type == "BOOL")
+    {
+        assignBool(exp, entry);
+        return;
+    }
+
     string tmpVar = buffer.freshVar();
     buffer.emit(tmpVar + "getelementptr i32, i32* %varStack, i32 " + to_string(entry->offset));
     buffer.emit("store i32 " + exp->m_var + ", i32* " + tmpVar);
@@ -326,6 +355,10 @@ Statement::Statement(Node *node) : Node()
             errorUnexpectedContinue(yylineno);
         exit(1);
     }
+    if(node->m_text == "break")
+        buffer.emit("br label %" + ScopesTable::getInstance()->getLastWhileNextLabel());
+    else if(node->m_text == "continue")
+        buffer.emit("br label %" + ScopesTable::getInstance()->getLastWhileBeforeLabel());
 }
 
 Statement::Statement(Statements *statements) : Node() {}
@@ -336,7 +369,7 @@ Statement::Statement(Call *call) : Node()
     m_type = call->m_type;
 }
 
-Statement::Statement(bool isWhile, Exp *exp, Statement *statement1, Statement *statement2) : Node()
+Statement::Statement(Exp *exp, Statement *statement1, Statement *statement2) : Node()
 {
     m_text = "";
     m_type = "";
@@ -344,16 +377,6 @@ Statement::Statement(bool isWhile, Exp *exp, Statement *statement1, Statement *s
     {
         errorMismatch(yylineno);
         exit(1);
-    }
-
-    if(isWhile)
-    {
-
-    }
-    else
-    {
-        buffer.emit("br label %" + exp->m_nextLabel);
-        buffer.emit(exp->m_nextLabel + ":");
     }
 }
 

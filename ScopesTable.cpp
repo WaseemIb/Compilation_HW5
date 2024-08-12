@@ -5,6 +5,7 @@
 #include "ScopesTable.h"
 #include "hw3_output.hpp"
 #include <iostream>
+#include "cg.hpp"
 using namespace output;
 
 ScopesTable* ScopesTable::instance = nullptr;
@@ -97,7 +98,15 @@ bool ScopesTable::hasWhileScope() const
     return false;
 }
 
-SingleScopeTable::SingleScopeTable(bool isWhile) : table(), isWhile(isWhile) {}
+SingleScopeTable::SingleScopeTable(bool isWhile) : table(), isWhile(isWhile), beforeWhileCond(), nextLabel()
+{
+    if(!isWhile)
+        return;
+    CodeBuffer& buffer = CodeBuffer::instance();
+    beforeWhileCond = buffer.freshLabel();
+    buffer.emit("br label %" + beforeWhileCond);
+    buffer.emit(beforeWhileCond + ":");
+}
 
 bool SingleScopeTable::symbolExists(const string& symbol) const
 {
@@ -164,4 +173,28 @@ ScopeTableEntry *ScopesTable::getVar(const string &symbol) const {
     if(getFunction(symbol) == nullptr)
         return var;
     return nullptr;
+}
+
+string ScopesTable::getLastWhileBeforeLabel() const {
+    string label;
+    for(SingleScopeTable* table : scopesTable)
+    {
+        if(table->isWhileScope())
+            label = table->beforeWhileCond;
+    }
+    return label;
+}
+
+SingleScopeTable *ScopesTable::getLastWhileScope() {
+    SingleScopeTable *res = nullptr;
+    for(SingleScopeTable* table : scopesTable)
+    {
+        if(table->isWhileScope())
+            res = table;
+    }
+    return res;
+}
+
+string ScopesTable::getLastWhileNextLabel() {
+    return ScopesTable::getLastWhileScope()->nextLabel;
 }
