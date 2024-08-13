@@ -18,14 +18,15 @@ void emitCheckZero(const string& var)
     buffer.emit(isZero + " = icmp eq i32 " + var + ", 0");
     string trueLabel = buffer.freshLabel();
     string nextLabel = buffer.freshLabel();
-    buffer.emit("br i32 " + isZero + ", label %" + trueLabel + ", label %" + nextLabel);
+    buffer.emit("br i1 " + isZero + ", label %" + trueLabel + ", label %" + nextLabel);
     buffer.emit(trueLabel + ":");
     string errorVar = buffer.freshStr();
-    buffer.emitGlobal(errorVar + R"( = private unnamed_addr constant [24 x i8] c"Error division by zero\00", align 1)");
+    buffer.emitGlobal(errorVar + R"( = private unnamed_addr constant [23 x i8] c"Error division by zero\00", align 1)");
     string msgPtr = buffer.freshVar();
-    buffer.emit(msgPtr + " = getelementptr [24 x i8], [24 x i8]* " + errorVar + ", i32 0, i32 0");
-    buffer.emit("call void @print(i8* %msg_ptr)");
+    buffer.emit(msgPtr + " = getelementptr [23 x i8], [23 x i8]* " + errorVar + ", i32 0, i32 0");
+    buffer.emit("call void @print(i8* " + msgPtr + ")");
     buffer.emit("call void @exit(i32 1)");
+    buffer.emit("br label %" + nextLabel);
     buffer.emit(nextLabel + ":");
 }
 
@@ -58,8 +59,10 @@ void Exp::processArithmetic(Exp *exp1, Node *op, Exp *exp2)
     if(!oneIsInt)
     {
         string tmpVar = m_var;
+        string tmpVar2 = buffer.freshVar();
         m_var = buffer.freshVar();
-        buffer.emit(m_var + " = trunc i32 " + tmpVar + " to i8");
+        buffer.emit(tmpVar2 + " = trunc i32 " + tmpVar + " to i8");
+        buffer.emit(m_var + " = zext i8 " + tmpVar2 + " to i32");
     }
 }
 
@@ -76,10 +79,10 @@ void Exp::processAndOr(Exp *exp1, Node *op, Exp *exp2)
     m_trueLabel = exp2->m_trueLabel;
     m_falseLabel = exp2->m_falseLabel;
     m_nextLabel = exp2->m_nextLabel;
-    if(operation == "OR") {
+    if(operation == "or") {
         buffer.emit(exp1->m_trueLabel + ":");
         buffer.emit("br label %" + m_trueLabel);
-    } else if(operation == "AND") {
+    } else if(operation == "and") {
         buffer.emit(exp1->m_falseLabel + ":");
         buffer.emit("br label %" + m_falseLabel);
     }
@@ -113,8 +116,8 @@ void Exp::processRelop(Exp *exp1, Node *op, Exp *exp2)
         cmpCmd = "ne";
 
     string tmpVar = buffer.freshVar();
-    buffer.emit(tmpVar + " = icmp " + cmpCmd + "i32 " + exp1->m_var + ", " + exp2->m_var);
-    buffer.emit("br i32 " + tmpVar + ", label %" + m_trueLabel + ", label %" + m_falseLabel);
+    buffer.emit(tmpVar + " = icmp " + cmpCmd + " i32 " + exp1->m_var + ", " + exp2->m_var);
+    buffer.emit("br i1 " + tmpVar + ", label %" + m_trueLabel + ", label %" + m_falseLabel);
 }
 
 
@@ -155,7 +158,7 @@ Exp::Exp(Node* node) : Node()
         m_nextLabel = buffer.freshLabel();
         string isOne = buffer.freshVar();
         buffer.emit(isOne + " = icmp eq i32 " + m_var + ", 1");
-        buffer.emit("br i32 " + isOne + ", label %" + m_trueLabel + ", " + m_falseLabel);
+        buffer.emit("br i1 " + isOne + ", label %" + m_trueLabel + ", label %" + m_falseLabel);
         m_var = "";
     }
 }
@@ -169,10 +172,22 @@ Exp::Exp(Node *node, const string& op) : Node()
         buffer.emit(m_var + " = add i32 0, " + node->m_text);
     } else if(op == "BYTE") {
         m_type = "BYTE";
-        string tmpVar = buffer.freshVar();
-        buffer.emit(tmpVar + " = add i32 0, " + node->m_text);
+        int value;
+        bool outOfByteRange = false;
+        try {
+            value = stoi(node->m_text);
+            if (value > MAX_BYTE_VALUE)
+                outOfByteRange = true;
+        } catch (std::out_of_range& e) {
+            outOfByteRange = true;
+        }
+        if(outOfByteRange)
+        {
+            errorByteTooLarge(yylineno, node->m_text);
+            exit(1);
+        }
         m_var = buffer.freshVar();
-        buffer.emit(m_var + " = trunc i32 " + tmpVar + " to i8");
+        buffer.emit(m_var + " = add i32 0, " + node->m_text);
     } else if(op == "NOT") {
         m_type = "BOOL";
         bool isBool = node->checkBool();
@@ -202,14 +217,16 @@ Exp::Exp(Node *node, const string& op) : Node()
         m_type = "STRING";
         m_var = buffer.freshVar();
         string strVar = buffer.freshStr();
-        buffer.emitGlobal(strVar + " = private unnamed_addr constant [" + to_string(m_text.size() + 1)
-                         +  R"( x i8] c")" + m_text + R"(\00", align 1)");
-        string tmp = "[" + to_string(m_text.size() + 1) + " x i8]";
+        string txt = node->m_text.substr(1, node->m_text.size() - 2);
+        buffer.emitGlobal(strVar + " = private unnamed_addr constant [" + to_string(txt.size() + 1)
+                         +  R"( x i8] c")" + txt + R"(\00", align 1)");
+        string tmp = "[" + to_string(txt.size() + 1) + " x i8]";
         buffer.emit(m_var + " = getelementptr " + tmp + ", " + tmp + "* " + strVar + ", i32 0, i32 0");
     } else if(op == "SAME") {
         m_type = node->m_type;
         m_trueLabel = node->m_trueLabel;
         m_falseLabel = node->m_falseLabel;
+        m_nextLabel = node->m_nextLabel;
         m_var = node->m_var;
     }
 }
@@ -229,8 +246,10 @@ Exp::Exp(Type *type, Exp *exp) : Node()
     if(m_type == "BYTE")
     {
         string tmpVar = m_var;
+        string tmpVar2 = buffer.freshVar();
         m_var = buffer.freshVar();
-        buffer.emit(m_var + " = trunc i32 " + tmpVar + " to i8");
+        buffer.emit(tmpVar2 + " = trunc i32 " + tmpVar + " to i8");
+        buffer.emit(m_var + " = zext i8 " + tmpVar2 + " to i32");
     }
 }
 
@@ -331,7 +350,7 @@ Statement::Statement(Node *node, Exp *exp) : Node()
         errorMismatch(yylineno); exit(1);
     }
 
-    if(m_type == "BOOL")
+    if(type == "BOOL")
     {
         assignBool(exp, entry);
         return;
@@ -410,6 +429,7 @@ Call::Call(Node *node, Exp *exp) : Node()
             exit(1);
         }
     }
+    callFunction(node, exp, entry);
     m_text = "";
     m_type = entry->type;
 }
@@ -432,8 +452,6 @@ void CheckConditionIsBool(Node* node)
 
 void initProgram()
 {
-    buffer.emitGlobal("%varStack = alloca i32, i32 50");
-
     buffer.emitGlobal("declare i32 @scanf(i8*, ...)");
     buffer.emitGlobal("declare i32 @printf(i8*, ...)");
     buffer.emitGlobal("declare void @exit(i32)");
@@ -462,4 +480,5 @@ void initProgram()
     buffer.emitGlobal("}");
 
     buffer.emit("define i32 @main(){");
+    buffer.emit("%varStack = alloca i32, i32 50");
 }

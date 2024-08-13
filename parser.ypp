@@ -95,8 +95,8 @@ M8 : { ScopesTable::getInstance()->addScope() ;}
 
 M9 : { ScopesTable::getInstance()->removeScope() ;}
 
-Q1 : { CodeBuffer::instance().emit(($-0)->m_falseLabel + ":") ;}
-Q2 : { CodeBuffer::instance().emit(($-0)->m_trueLabel + ":") ;}
+Q1 : { CodeBuffer::instance().emit(($-1)->m_falseLabel + ":") ;}
+Q2 : { CodeBuffer::instance().emit(($-1)->m_trueLabel + ":") ;}
 
 Condition : Exp {CheckConditionIsBool($1);}
 %%
